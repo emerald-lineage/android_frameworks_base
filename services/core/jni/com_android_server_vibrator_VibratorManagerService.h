@@ -174,25 +174,49 @@ private:
 template <typename I>
 class DefaultProvider : public HalProvider<I> {
 public:
-    DefaultProvider() = default;
+    explicit DefaultProvider(std::string halName) : mHalName(std::move(halName)) {}
     virtual ~DefaultProvider() = default;
 
 private:
+    const std::string mHalName;
+
     std::shared_ptr<I> loadHal() override {
-        auto halName = std::string(I::descriptor) + "/default";
-        auto hal = I::fromBinder(ndk::SpAIBinder(AServiceManager_checkService(halName.c_str())));
+        auto hal = I::fromBinder(ndk::SpAIBinder(AServiceManager_checkService(mHalName.c_str())));
         if (hal == nullptr) {
-            ALOGE("%s: Error connecting to %s", halName.c_str(), __func__);
+            ALOGE("%s: Error connecting to %s", mHalName.c_str(), __func__);
         }
         return hal;
     }
 };
 
+// Returns the HAL service to use for I: the "default" instance, or the only declared instance when
+// the device declares no "default" one (some vendor images, e.g. Xiaomi HyperOS, register their AIDL
+// vibrator HAL only under their own instance name). Empty if none. Same rule as
+// VintfHalVibrator.getDefaultVibratorServiceName().
+template <typename I>
+std::string declaredServiceName() {
+    std::string defaultName = std::string(I::descriptor) + "/default";
+    if (AServiceManager_isDeclared(defaultName.c_str())) {
+        return defaultName;
+    }
+    std::vector<std::string> instances;
+    AServiceManager_forEachDeclaredInstance(I::descriptor, &instances,
+                                            [](const char* instance, void* context) {
+                                                static_cast<std::vector<std::string>*>(context)
+                                                        ->emplace_back(instance);
+                                            });
+    if (instances.size() == 1) {
+        return std::string(I::descriptor) + "/" + instances[0];
+    }
+    return "";
+}
+
 // Returns a new provider for the default HAL service declared on the device, null if not declared.
 template <typename I>
 std::unique_ptr<HalProvider<I>> defaultProviderForDeclaredService() {
-    if (AServiceManager_isDeclared((std::string(I::descriptor) + "/default").c_str())) {
-        return std::make_unique<DefaultProvider<I>>();
+    std::string halName = declaredServiceName<I>();
+    if (!halName.empty()) {
+        return std::make_unique<DefaultProvider<I>>(std::move(halName));
     }
     return nullptr;
 }

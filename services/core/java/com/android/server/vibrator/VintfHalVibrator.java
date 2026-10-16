@@ -95,13 +95,40 @@ class VintfHalVibrator {
         }
     }
 
+    /**
+     * Returns the {@link IVibrator} service to use as the default vibrator: the "default" instance,
+     * or the only declared instance when the device has no "default" one (some vendor images, e.g.
+     * Xiaomi HyperOS, register their AIDL vibrator HAL only under their own instance name), or null.
+     */
+    @Nullable
+    static String getDefaultVibratorServiceName() {
+        String defaultName = IVibrator.DESCRIPTOR + "/default";
+        if (ServiceManager.isDeclared(defaultName)) {
+            return defaultName;
+        }
+        String[] instances = ServiceManager.getDeclaredInstances(IVibrator.DESCRIPTOR);
+        if (instances != null && instances.length == 1) {
+            return IVibrator.DESCRIPTOR + "/" + instances[0];
+        }
+        return null;
+    }
+
     /** {@link VintfSupplier} for default {@link IVibrator} service. */
     static final class DefaultVibratorSupplier extends VintfSupplier<IVibrator> {
+        private final String mServiceName;
+
+        DefaultVibratorSupplier() {
+            this(IVibrator.DESCRIPTOR + "/default");
+        }
+
+        DefaultVibratorSupplier(@NonNull String serviceName) {
+            mServiceName = serviceName;
+        }
+
         @Nullable
         @Override
         IBinder connectToService() {
-            return Binder.allowBlocking(ServiceManager.waitForDeclaredService(
-                    IVibrator.DESCRIPTOR + "/default"));
+            return Binder.allowBlocking(ServiceManager.waitForDeclaredService(mServiceName));
         }
 
         @NonNull
