@@ -120,6 +120,13 @@ public class ThermalManagerService extends SystemService {
     // to make a callback
     public static final float HEADROOM_THRESHOLD_CALLBACK_MIN_DIFFERENCE = 0.01f;
 
+    /**
+     * How often the SKIN temperatures are read back from the HAL while the status is above NONE.
+     * Some HALs (the stock MediaTek one on emerald) report a status rise by callback but not the
+     * fall, which left the status at MODERATE long after the device had cooled down.
+     */
+    private static final long THROTTLING_RECHECK_INTERVAL_MILLIS = 30_000;
+
     /** Lock to protect listen list. */
     private final Object mLock = new Object();
 
@@ -175,6 +182,8 @@ public class ThermalManagerService extends SystemService {
 
     /** Hal ready. */
     private final AtomicBoolean mHalReady = new AtomicBoolean();
+
+    private final Runnable mThrottlingRecheckRunnable = this::recheckSkinTemperatures;
 
     /** Watches temperatures to forecast when throttling will occur */
     @VisibleForTesting
@@ -415,6 +424,34 @@ public class ThermalManagerService extends SystemService {
             Trace.traceCounter(Trace.TRACE_TAG_POWER, "ThermalManagerService.status", newStatus);
             mStatus = newStatus;
             notifyStatusListenersLocked(mThermalStatusListeners, mStatus);
+            scheduleThrottlingRecheckLocked();
+        }
+    }
+
+    @GuardedBy("mLock")
+    private void scheduleThrottlingRecheckLocked() {
+        final Handler handler = BackgroundThread.getHandler();
+        handler.removeCallbacks(mThrottlingRecheckRunnable);
+        if (mStatus > Temperature.THROTTLING_NONE && !mIsStatusOverride) {
+            handler.postDelayed(mThrottlingRecheckRunnable, THROTTLING_RECHECK_INTERVAL_MILLIS);
+        }
+    }
+
+    private void recheckSkinTemperatures() {
+        if (!mHalReady.get()) {
+            return;
+        }
+        // Same path as a HAL callback, so a missed "cooled down" callback can't keep the status.
+        // Unfiltered read, as the initial one at HAL connection; only SKIN decides the status.
+        final List<Temperature> temperatures = mHalWrapper.getCurrentTemperatures(false, 0);
+        for (int i = 0; i < temperatures.size(); i++) {
+            final Temperature temperature = temperatures.get(i);
+            if (temperature.getType() == Temperature.TYPE_SKIN) {
+                onTemperatureChanged(temperature, true);
+            }
+        }
+        synchronized (mLock) {
+            scheduleThrottlingRecheckLocked();
         }
     }
 
@@ -1048,6 +1085,8 @@ public class ThermalManagerService extends SystemService {
                 synchronized (mLock) {
                     mIsStatusOverride = false;
                     onTemperatureMapChangedLocked();
+                    // The status may equal the overridden one, so setStatusLocked didn't schedule.
+                    scheduleThrottlingRecheckLocked();
                     return 0;
                 }
             } finally {
