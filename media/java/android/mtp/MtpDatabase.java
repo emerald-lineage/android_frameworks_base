@@ -40,6 +40,7 @@ import android.os.SystemProperties;
 import android.os.storage.StorageVolume;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Files;
+import android.provider.Settings;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
@@ -687,6 +688,16 @@ public class MtpDatabase implements AutoCloseable {
             case MtpConstants.DEVICE_PROPERTY_DEVICE_FRIENDLY_NAME:
                 // writable string properties kept in shared preferences
                 value = mDeviceProperties.getString(Integer.toString(property), "");
+                if (value.isEmpty()
+                        && property == MtpConstants.DEVICE_PROPERTY_DEVICE_FRIENDLY_NAME) {
+                    // Until the host names the device, show the user-visible device name
+                    // instead of letting the host fall back to the model number.
+                    String deviceName = Settings.Global.getString(
+                            mContext.getContentResolver(), Settings.Global.DEVICE_NAME);
+                    if (deviceName != null) {
+                        value = deviceName;
+                    }
+                }
                 length = value.length();
                 if (length > 255) {
                     length = 255;
