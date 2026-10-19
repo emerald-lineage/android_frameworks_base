@@ -2541,7 +2541,10 @@ class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     private String getDefaultDeviceName() {
-        return mContext.getResources().getString(R.string.def_device_name_simple, Build.MODEL);
+        // The marketing name ("POCO M6 Pro") where the device sets one, else the model number.
+        final String marketName = SystemProperties.get("ro.product.marketname");
+        return mContext.getResources().getString(R.string.def_device_name_simple,
+                TextUtils.isEmpty(marketName) ? Build.MODEL : marketName);
     }
 
     private TelephonyManager getTelephonyManager() {
