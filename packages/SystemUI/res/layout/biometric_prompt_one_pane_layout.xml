@@ -103,7 +103,7 @@
         android:paddingTop="24dp"
         app:layout_constrainedHeight="true"
         app:layout_constrainedWidth="true"
-        app:layout_constraintBottom_toTopOf="@+id/scrollBarrier"
+        app:layout_constraintBottom_toTopOf="@+id/indicator"
         app:layout_constraintEnd_toEndOf="@id/panel"
         app:layout_constraintStart_toStartOf="@id/panel"
         app:layout_constraintTop_toTopOf="@+id/topGuideline"
@@ -201,22 +201,23 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
 
+    <!-- Placed above the sensor icon and the buttons rather than below the icon: with an
+         under-display sensor close to the bottom edge (e.g. emerald) there is no room below the
+         icon and the text ended up under the navigation bar. -->
     <TextView
         android:id="@+id/indicator"
         style="@style/TextAppearance.AuthCredential.Indicator"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="24dp"
-        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
         android:accessibilityLiveRegion="polite"
         android:fadingEdge="horizontal"
         android:gravity="center_horizontal"
         android:scrollHorizontally="true"
-        app:layout_constraintBottom_toTopOf="@+id/button_bar"
+        app:layout_constraintBottom_toTopOf="@+id/scrollBarrier"
         app:layout_constraintEnd_toEndOf="@+id/panel"
-        app:layout_constraintStart_toStartOf="@+id/panel"
-        app:layout_constraintTop_toBottomOf="@+id/biometric_icon"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintStart_toStartOf="@+id/panel" />
 
     <ImageButton
         android:id="@+id/close_button"
