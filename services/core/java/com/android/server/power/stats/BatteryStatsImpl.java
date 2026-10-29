@@ -373,7 +373,12 @@ public class BatteryStatsImpl extends BatteryStats {
                 @Override
                 public long getWifiActiveDuration() {
                     synchronized (BatteryStatsImpl.this) {
-                        return getGlobalWifiRunningTime(mClock.elapsedRealtime() * 1000,
+                        // Without controller activity reporting this duration is multiplied by
+                        // wifi.active, the power while the radio is active. Nothing calls
+                        // noteWifiRunning() any more, so the "running" timer stays at zero (and it
+                        // would mean "Wi-Fi on", not "radio active", anyway): use the radio
+                        // active timer fed by noteWifiRadioPowerState() instead.
+                        return getWifiActiveTime(mClock.elapsedRealtime() * 1000,
                                 STATS_SINCE_CHARGED) / 1000;
                     }
                 }
