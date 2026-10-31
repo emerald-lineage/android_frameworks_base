@@ -23,7 +23,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.UserHandle
 import android.provider.Settings
-import com.android.internal.jank.InteractionJankMonitor
 import com.android.internal.logging.MetricsLogger
 import com.android.internal.logging.UiEventLogger
 import com.android.internal.logging.nano.MetricsProto
@@ -184,9 +183,9 @@ constructor(
         activityStarter.startActivity(
             Intent(Settings.ACTION_SETTINGS),
             true /* dismissShade */,
-            expandable.activityTransitionController(
-                InteractionJankMonitor.CUJ_SHADE_APP_LAUNCH_FROM_SETTINGS_BUTTON
-            ),
+            // Open Settings with the normal app launch animation, not expanded from the gear.
+            null /* animationController */,
+            false /* showOverLockscreenWhenLocked */,
         )
     }
 
