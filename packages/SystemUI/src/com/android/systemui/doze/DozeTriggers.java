@@ -29,6 +29,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.hardware.display.AmbientDisplayConfiguration;
 import android.os.SystemClock;
+import android.os.UserHandle;
 import android.text.format.Formatter;
 import android.util.IndentingPrintWriter;
 import android.util.Log;
@@ -85,6 +86,9 @@ public class DozeTriggers implements DozeMachine.Part {
     private static boolean sWakeDisplaySensorState = true;
 
     private static final int PROXIMITY_TIMEOUT_DELAY_MS = 500;
+    // Settings.Secure, written by Settings > Display > Pocket protection; 0 skips the proximity
+    // sensor before and during pulses (emerald: an ultrasound sensor that can hiss in the speaker).
+    private static final String POCKET_PROTECTION = "pocket_protection";
 
     private final Context mContext;
     private final SessionTracker mSessionTracker;
@@ -105,6 +109,7 @@ public class DozeTriggers implements DozeMachine.Part {
     private final AuthController mAuthController;
     private final KeyguardStateController mKeyguardStateController;
     private final UserTracker mUserTracker;
+    private final SecureSettings mSecureSettings;
     private final SelectedUserInteractor mSelectedUserInteractor;
     private final UiEventLogger mUiEventLogger;
 
@@ -232,6 +237,7 @@ public class DozeTriggers implements DozeMachine.Part {
         mKeyguardStateController = keyguardStateController;
         mUserTracker = userTracker;
         mSelectedUserInteractor = selectedUserInteractor;
+        mSecureSettings = secureSettings;
     }
 
     @Override
@@ -281,11 +287,15 @@ public class DozeTriggers implements DozeMachine.Part {
         }
     }
 
+    private boolean isPocketProtectionEnabled() {
+        return mSecureSettings.getIntForUser(POCKET_PROTECTION, 1, UserHandle.USER_CURRENT) != 0;
+    }
+
     private void proximityCheckThenCall(Consumer<Boolean> callback,
             boolean alreadyPerformedProxCheck,
             int reason) {
         Boolean cachedProxNear = mDozeSensors.isProximityCurrentlyNear();
-        if (alreadyPerformedProxCheck) {
+        if (alreadyPerformedProxCheck || !isPocketProtectionEnabled()) {
             callback.accept(null);
         } else if (cachedProxNear != null) {
             callback.accept(cachedProxNear);
@@ -552,7 +562,8 @@ public class DozeTriggers implements DozeMachine.Part {
         mDozeSensors.onScreenState(state);
         final boolean lowPowerStateOrOff = state == Display.STATE_DOZE
                 || state == Display.STATE_DOZE_SUSPEND || state == Display.STATE_OFF;
-        mDozeSensors.setProxListening(mWantProxSensor && lowPowerStateOrOff);
+        mDozeSensors.setProxListening(mWantProxSensor && lowPowerStateOrOff
+                && isPocketProtectionEnabled());
         mDozeSensors.setListeningWithPowerState(mWantSensors, mWantTouchScreenSensors,
                 mInAod, lowPowerStateOrOff);
 

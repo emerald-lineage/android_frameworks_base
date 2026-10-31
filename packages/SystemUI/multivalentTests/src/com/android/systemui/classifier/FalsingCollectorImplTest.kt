@@ -59,6 +59,7 @@ import com.android.systemui.user.domain.interactor.SelectedUserInteractor
 import com.android.systemui.util.kotlin.javaAdapter
 import com.android.systemui.util.sensors.ProximitySensor
 import com.android.systemui.util.sensors.ThresholdSensor
+import com.android.systemui.util.settings.fakeSettings
 import com.android.systemui.util.time.fakeSystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
@@ -130,6 +131,7 @@ class FalsingCollectorImplTest(flags: FlagsParameterization) : SysuiTestCase() {
                 { deviceEntryInteractor },
                 { occlusionInteractor },
                 { deviceUnlockedInteractor },
+                fakeSettings,
             )
         }
 
