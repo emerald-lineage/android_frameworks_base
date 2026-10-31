@@ -39,10 +39,12 @@ import android.os.Looper;
 import android.os.PermissionEnforcer;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.os.Trace;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.IntArray;
+import android.util.MathUtils;
 import android.util.Slog;
 import android.util.SparseArray;
 
@@ -68,6 +70,11 @@ import java.util.function.Supplier;
 public class LightsService extends SystemService {
     static final String TAG = "LightsService";
     static final boolean DEBUG = false;
+
+    // The emerald stock light HAL takes a 12-bit backlight level (color & 0xfff) while this prop is
+    // set, otherwise it maps the 8-bit luma of the color to 1..2047 in steps of ~8.
+    private static final boolean BACKLIGHT_12BIT =
+            !SystemProperties.get("ro.miui.ui.version.code").isEmpty();
 
     // Priority for the system override session, higher than typical app priorities.
     static final int DEFAULT_SYSTEM_SESSION_PRIORITY = 1_000;
@@ -675,7 +682,15 @@ public class LightsService extends SystemService {
                 }
                 int brightnessInt = BrightnessSynchronizer.brightnessFloatToInt(brightness);
                 int color = brightnessInt & 0x000000ff;
-                color = 0xff000000 | (color << 16) | (color << 8) | color;
+                if (BACKLIGHT_12BIT && mHwLight.type == LightType.BACKLIGHT) {
+                    // Same scale as the 8-bit path (1..2047, 0 = off), in single steps
+                    int level = brightnessInt > 0
+                            ? 1 + Math.round(2046 * MathUtils.constrain(brightness, 0f, 1f))
+                            : 0;
+                    color = 0xff000000 | (color << 16) | level;
+                } else {
+                    color = 0xff000000 | (color << 16) | (color << 8) | color;
+                }
                 setLightLocked(color, LIGHT_FLASH_NONE, 0, 0, brightnessMode);
             }
         }
