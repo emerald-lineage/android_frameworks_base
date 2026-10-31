@@ -20,6 +20,7 @@ import static com.android.systemui.dock.DockManager.DockEventListener;
 
 import android.hardware.SensorManager;
 import android.hardware.biometrics.BiometricSourceType;
+import android.os.UserHandle;
 import android.util.Log;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -55,6 +56,7 @@ import com.android.systemui.util.kotlin.JavaAdapter;
 import com.android.systemui.util.sensors.ProximitySensor;
 import com.android.systemui.util.sensors.ThresholdSensor;
 import com.android.systemui.util.sensors.ThresholdSensorEvent;
+import com.android.systemui.util.settings.SecureSettings;
 import com.android.systemui.util.time.SystemClock;
 
 import dagger.Lazy;
@@ -73,6 +75,9 @@ class FalsingCollectorImpl implements FalsingCollector {
     private static final String PROXIMITY_SENSOR_TAG = "FalsingCollector";
     private static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
     private static final long GESTURE_PROCESSING_DELAY_MS = 100;
+    // Settings.Secure, written by Settings > Display > Pocket protection; 0 keeps the proximity
+    // sensor off on the lock screen (emerald: an ultrasound sensor that can hiss in the speaker).
+    private static final String POCKET_PROTECTION = "pocket_protection";
 
     private final Set<Integer> mAcceptedKeycodes = new HashSet<>(Arrays.asList(
         KeyEvent.KEYCODE_ENTER,
@@ -101,6 +106,7 @@ class FalsingCollectorImpl implements FalsingCollector {
     private final Lazy<DeviceEntryInteractor> mDeviceEntryInteractor;
     private final Lazy<KeyguardOcclusionInteractor> mOcclusionInteractor;
     private final Lazy<DeviceUnlockedInteractor> mDeviceUnlockedInteractor;
+    private final SecureSettings mSecureSettings;
 
     private int mState;
     private boolean mShowingAod;
@@ -187,7 +193,8 @@ class FalsingCollectorImpl implements FalsingCollector {
             Lazy<CommunalSceneInteractor> communalSceneInteractorLazy,
             Lazy<DeviceEntryInteractor> deviceEntryInteractor,
             Lazy<KeyguardOcclusionInteractor> occlusionInteractor,
-            Lazy<DeviceUnlockedInteractor> deviceUnlockedInteractor) {
+            Lazy<DeviceUnlockedInteractor> deviceUnlockedInteractor,
+            SecureSettings secureSettings) {
         mFalsingDataProvider = falsingDataProvider;
         mFalsingManager = falsingManager;
         mKeyguardUpdateMonitor = keyguardUpdateMonitor;
@@ -207,6 +214,7 @@ class FalsingCollectorImpl implements FalsingCollector {
         mDeviceEntryInteractor = deviceEntryInteractor;
         mOcclusionInteractor = occlusionInteractor;
         mDeviceUnlockedInteractor = deviceUnlockedInteractor;
+        mSecureSettings = secureSettings;
     }
 
     @Override
@@ -512,6 +520,10 @@ class FalsingCollectorImpl implements FalsingCollector {
     }
 
     private void registerSensors() {
+        if (mSecureSettings.getIntForUser(POCKET_PROTECTION, 1, UserHandle.USER_CURRENT) == 0) {
+            unregisterSensors();
+            return;
+        }
         mProximitySensor.register(mSensorEventListener);
     }
 
