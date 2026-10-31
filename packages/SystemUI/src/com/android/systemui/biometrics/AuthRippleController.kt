@@ -129,6 +129,12 @@ constructor(
     }
 
     private fun showUnlockRippleInternal(biometricSourceType: BiometricSourceType) {
+        // No unlock ripple: it washes the whole screen in the accent colour from the sensor on
+        // every biometric unlock. Nothing waits for it to end; the dwell ripple stays.
+        if (!SHOW_UNLOCK_RIPPLE) {
+            return
+        }
+
         val keyguardNotShowing = !keyguardStateController.isShowing
         val unlockNotAllowed =
             !keyguardUpdateMonitor.isUnlockingWithBiometricAllowed(biometricSourceType)
@@ -422,5 +428,6 @@ constructor(
     companion object {
         const val RIPPLE_ANIMATION_DURATION: Long = 800
         const val TAG = "AuthRippleController"
+        private const val SHOW_UNLOCK_RIPPLE = false
     }
 }
