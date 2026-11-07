@@ -304,6 +304,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, CoreSt
     private final AuthController mAuthController;
     private final UiEventLogger mUiEventLogger;
     private final Set<String> mAllowFingerprintOnOccludingActivitiesFromPackage;
+    private final boolean mUdfpsListenWhenOccluded;
     private final PackageManager mPackageManager;
     private int mStatusBarState;
     private final StatusBarStateController.StateListener mStatusBarStateControllerListener =
@@ -2308,6 +2309,8 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, CoreSt
                 mContext.getResources().getStringArray(
                         R.array.config_fingerprint_listen_on_occluding_activity_packages))
                 .collect(Collectors.toSet());
+        mUdfpsListenWhenOccluded = mContext.getResources().getBoolean(
+                R.bool.config_udfpsListenWhenOccluded);
         mDevicePostureController = devicePostureController;
         mTaskStackChangeListeners = taskStackChangeListeners;
         mActivityTaskManager = activityTaskManagerService;
@@ -3112,7 +3115,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, CoreSt
                         || (mKeyguardOccluded && mIsDreaming)
                         || (mKeyguardOccluded && userDoesNotHaveTrust && mKeyguardShowing
                         && (mOccludingAppRequestingFp
-                        || isUdfps
+                        || (isUdfps && mUdfpsListenWhenOccluded)
                         || isAlternateBouncerShowing()
                         || mAllowFingerprintOnCurrentOccludingActivity
                 )
@@ -4319,6 +4322,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, CoreSt
             if (isUdfpsSupported()) {
                 pw.println("        udfpsEnrolled=" + isUdfpsEnrolled());
                 pw.println("        shouldListenForUdfps=" + shouldListenForFingerprint(true));
+                pw.println("        udfpsListenWhenOccluded=" + mUdfpsListenWhenOccluded);
                 pw.println("        isPrimaryBouncerShowingOrWillBeShowing="
                         + isPrimaryBouncerShowingOrWillBeShowing());
                 pw.println("        mStatusBarState=" + StatusBarState.toString(mStatusBarState));

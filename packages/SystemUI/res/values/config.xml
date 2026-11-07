@@ -848,6 +848,12 @@
     <string-array name="config_fingerprint_listen_on_occluding_activity_packages" translatable="false">
     </string-array>
 
+    <!-- Whether to keep listening for an under-display fingerprint while an app occludes the lock
+         screen and the device is interactive. Turn off when the fingerprint HAL reads the touch
+         panel itself and so ignores SystemUI's touch handling: a tap on an app button over the
+         sensor (the in-call end button) would light the sensor and unlock behind the app. -->
+    <bool name="config_udfpsListenWhenOccluded">true</bool>
+
     <!-- Whether the communal service should be enabled -->
     <bool name="config_communalServiceEnabled">false</bool>
 
