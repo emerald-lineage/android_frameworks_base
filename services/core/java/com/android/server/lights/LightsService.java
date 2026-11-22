@@ -683,9 +683,10 @@ public class LightsService extends SystemService {
                 int brightnessInt = BrightnessSynchronizer.brightnessFloatToInt(brightness);
                 int color = brightnessInt & 0x000000ff;
                 if (BACKLIGHT_12BIT && mHwLight.type == LightType.BACKLIGHT) {
-                    // Same scale as the 8-bit path (1..2047, 0 = off), in single steps
+                    // Panel DBV scale, 1..4095 in single steps, 0 = off. 2047 is the factory
+                    // maximum of 500 nits, the rest is the high brightness mode range.
                     int level = brightnessInt > 0
-                            ? 1 + Math.round(2046 * MathUtils.constrain(brightness, 0f, 1f))
+                            ? 1 + Math.round(4094 * MathUtils.constrain(brightness, 0f, 1f))
                             : 0;
                     color = 0xff000000 | (color << 16) | level;
                 } else {
